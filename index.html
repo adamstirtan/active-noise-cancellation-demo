@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simulation UI Template</title>
+    <title>Destructive Interference Demo</title>
     <style>
       :root {
         --bg: #0e1320;
@@ -326,11 +326,16 @@
             ☰
           </button>
           <div class="brand-title">
-            <span>Simulation UI Template</span>
-            <span class="brand-badge">Reusable controls and layout</span>
+            <span>Destructive Interference Demo</span>
+            <span class="brand-badge">Explore how phase inversion reduces sound</span>
           </div>
         </div>
-        <div class="top-controls" id="top-controls"></div>
+        <div class="top-controls" id="top-controls">
+          <label class="toggle-label">
+            <input type="checkbox" id="anc-toggle" />
+            <span>ANC Mode</span>
+          </label>
+        </div>
         <div class="actions">
           <button class="icon-btn" id="template-info-btn" aria-label="About">
             i
@@ -341,42 +346,48 @@
       <div class="app-body">
         <aside id="sidebar" class="sidebar">
           <div id="sidebar-panels">
-            <!-- Progress Panel -->
+            <!-- Recording Status Panel -->
             <div class="panel">
-              <h3>Progress</h3>
+              <h3>Recording Status</h3>
               <div class="stat-item">
-                <span>Step</span><span id="iteration">0</span>
+                <span>Duration</span><span id="recording-duration">0.0s</span>
               </div>
               <div class="stat-item">
-                <span>Metric</span><span id="metric">N/A</span>
+                <span>Status</span><span id="recording-status">Ready</span>
               </div>
               <div class="stat-item">
-                <span>Status</span><span id="status">Ready</span>
+                <span>ANC Mode</span><span id="anc-status">Off</span>
               </div>
-            </div>
-
-            <!-- Metric Chart Panel -->
-            <div class="panel">
-              <h3>Metric</h3>
-              <div class="chart-wrap"><canvas id="metricChart"></canvas></div>
             </div>
 
             <!-- Controls Panel -->
             <div class="panel">
               <h3>Controls</h3>
               <div class="buttons">
-                <button id="startButton" title="Start">▶ Start</button>
-                <button id="pauseButton" title="Pause" disabled>⏸ Pause</button>
-                <button id="resetButton" title="Reset">↻ Reset</button>
-                <button id="saveButton" title="Save">💾 Save</button>
+                <button id="recordButton" title="Start Recording">🎙 Record</button>
+                <button id="stopRecordButton" title="Stop Recording" disabled>⏹ Stop</button>
+                <button id="playButton" title="Play Recording" disabled>▶ Play</button>
+                <button id="pauseButton" title="Pause Playback" disabled>⏸ Pause</button>
               </div>
             </div>
 
-            <!-- Configuration (add your controls here) -->
+            <!-- Visualization Controls -->
             <div class="panel">
-              <h3>Configuration</h3>
-              <p style="margin: 0; color: var(--muted); font-size: 12px">
-                Add controls for your simulation here.
+              <h3>Visualization</h3>
+              <div class="buttons">
+                <button id="waveformButton" title="Show Waveform">📈 Waveform</button>
+                <button id="spectrumButton" title="Show Spectrum">📊 Spectrum</button>
+              </div>
+            </div>
+
+            <!-- Information -->
+            <div class="panel">
+              <h3>How it Works</h3>
+              <p style="margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6;">
+                Record your voice, then toggle ANC mode during playback. 
+                ANC inverts the phase of the audio signal (multiplies by -1), 
+                demonstrating destructive interference - the principle behind 
+                noise-cancelling headphones.
               </p>
             </div>
           </div>
@@ -399,7 +410,7 @@
         aria-labelledby="template-modal-title"
       >
         <header>
-          <h3 id="template-modal-title">About this Template</h3>
+          <h3 id="template-modal-title">About Destructive Interference</h3>
           <button
             class="close-btn"
             id="template-modal-close"
@@ -409,10 +420,23 @@
           </button>
         </header>
         <section id="template-modal-content">
+          <h4>What is Destructive Interference?</h4>
           <p>
-            This is a clean simulation UI template. It includes the layout,
-            controls, chart area, and canvases, but no simulation logic. Hook up
-            your own simulation in <code>app.js</code>.
+            Sound waves can add together in constructive or destructive ways. 
+            When two identical waves meet in opposite phase (one is inverted), 
+            their amplitudes cancel out - this is destructive interference.
+          </p>
+          <h4>How Active Noise Cancellation Works</h4>
+          <p>
+            ANC headphones use microphones to detect ambient noise, then generate 
+            a phase-inverted copy of that sound. When the original noise and the 
+            inverted copy mix in your ear, they cancel each other out.
+          </p>
+          <h4>This Demo</h4>
+          <p>
+            Record up to 15 seconds of audio, then play it back. Toggle ANC mode 
+            to hear the phase-inverted version. The visualization shows how the 
+            waveform changes in real-time.
           </p>
         </section>
       </div>
