@@ -108,7 +108,9 @@ class ANCDemoApp {
 
   attachEvents() {
     this.recordButton?.addEventListener("click", () => this.startRecording());
-    this.stopRecordButton?.addEventListener("click", () => this.stopRecording());
+    this.stopRecordButton?.addEventListener("click", () =>
+      this.stopRecording()
+    );
     this.playButton?.addEventListener("click", () => this.playAudio());
     this.pauseButton?.addEventListener("click", () => this.pauseAudio());
     this.waveformButton?.addEventListener("click", () => {
@@ -129,16 +131,28 @@ class ANCDemoApp {
 
   async startRecording() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+      // Safari has issues with empty audio constraints objects
+      // Use the simplest possible form: just 'true'
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (firstError) {
+        // If that fails, try with an empty object (some browsers prefer this)
+        console.log(
+          "First attempt failed, trying alternate constraint format..."
+        );
+        stream = await navigator.mediaDevices.getUserMedia({ audio: {} });
+      }
+
       // Initialize AudioContext if not already done
       if (!this.audioContext) {
-        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.audioContext = new (window.AudioContext ||
+          window.webkitAudioContext)();
       }
 
       this.audioChunks = [];
       this.mediaRecorder = new MediaRecorder(stream);
-      
+
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
       };
@@ -146,11 +160,13 @@ class ANCDemoApp {
       this.mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(this.audioChunks, { type: "audio/webm" });
         const arrayBuffer = await audioBlob.arrayBuffer();
-        this.recordedAudioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-        
+        this.recordedAudioBuffer = await this.audioContext.decodeAudioData(
+          arrayBuffer
+        );
+
         // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
-        
+        stream.getTracks().forEach((track) => track.stop());
+
         this.updateStatus("Recording complete");
         this.playButton.disabled = false;
       };
@@ -172,20 +188,36 @@ class ANCDemoApp {
           this.stopRecording();
         }
       }, this.maxRecordingTime * 1000);
-
     } catch (error) {
       console.error("Error accessing microphone:", error);
-      this.updateStatus("Microphone access denied");
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      if (error.constraint) {
+        console.error("Failed constraint:", error.constraint);
+      }
+
+      // Provide specific error messages
+      let message = "Microphone access failed";
+      if (error.name === "NotAllowedError") {
+        message =
+          "Microphone permission denied - please allow access in browser settings";
+      } else if (error.name === "NotFoundError") {
+        message = "No microphone found on this device";
+      } else if (error.name === "OverconstrainedError") {
+        message = "Browser constraint error - please try a different browser";
+      }
+
+      this.updateStatus(message);
     }
   }
 
   updateRecordingDuration() {
     if (!this.isRecording) return;
-    
+
     const elapsed = (Date.now() - this.recordingStartTime) / 1000;
     this.recordingDuration = elapsed;
     this.durationDisplay.textContent = elapsed.toFixed(1) + "s";
-    
+
     if (elapsed < this.maxRecordingTime) {
       requestAnimationFrame(() => this.updateRecordingDuration());
     }
@@ -212,20 +244,20 @@ class ANCDemoApp {
     // Create audio nodes
     this.sourceNode = this.audioContext.createBufferSource();
     this.sourceNode.buffer = this.recordedAudioBuffer;
-    
+
     // Create gain node for phase inversion
     this.gainNode = this.audioContext.createGain();
     this.gainNode.gain.value = this.ancMode ? -1 : 1;
-    
+
     // Create analyser for visualization
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 2048;
-    
+
     // Connect nodes: source -> gain -> analyser -> destination
     this.sourceNode.connect(this.gainNode);
     this.gainNode.connect(this.analyser);
     this.analyser.connect(this.audioContext.destination);
-    
+
     // Handle playback end
     this.sourceNode.onended = () => {
       this.isPlaying = false;
@@ -237,13 +269,13 @@ class ANCDemoApp {
         this.animationId = null;
       }
     };
-    
+
     this.sourceNode.start();
     this.isPlaying = true;
     this.playButton.disabled = true;
     this.pauseButton.disabled = false;
     this.updateStatus("Playing...");
-    
+
     // Start visualization
     this.visualize();
   }
@@ -349,7 +381,12 @@ class ANCDemoApp {
     for (let i = 0; i < bufferLength; i++) {
       const barHeight = (dataArray[i] / 255) * height;
 
-      const gradient = ctx.createLinearGradient(0, height - barHeight, 0, height);
+      const gradient = ctx.createLinearGradient(
+        0,
+        height - barHeight,
+        0,
+        height
+      );
       if (this.ancMode) {
         gradient.addColorStop(0, "#ff6b6b");
         gradient.addColorStop(1, "#ff9999");
@@ -368,7 +405,9 @@ class ANCDemoApp {
     ctx.fillStyle = "#e7edf6";
     ctx.font = "14px system-ui, -apple-system, Segoe UI, Roboto";
     ctx.fillText(
-      this.ancMode ? "Frequency Spectrum (ANC Mode)" : "Frequency Spectrum (Normal)",
+      this.ancMode
+        ? "Frequency Spectrum (ANC Mode)"
+        : "Frequency Spectrum (Normal)",
       16,
       24
     );
@@ -390,7 +429,7 @@ class ANCDemoApp {
     const h = this.canvas.height || 300;
     this.ctx.fillStyle = "#000";
     this.ctx.fillRect(0, 0, w, h);
-    
+
     // Draw initial message
     this.ctx.fillStyle = "#a7b1c2";
     this.ctx.font = "16px system-ui, -apple-system, Segoe UI, Roboto";
