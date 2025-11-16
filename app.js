@@ -131,17 +131,34 @@ class ANCDemoApp {
 
   async startRecording() {
     try {
-      // Safari has issues with empty audio constraints objects
-      // Use the simplest possible form: just 'true'
+      // Safari has issues with certain audio constraint formats
+      // Try multiple approaches in order of compatibility
       let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (firstError) {
-        // If that fails, try with an empty object (some browsers prefer this)
-        console.log(
-          "First attempt failed, trying alternate constraint format..."
-        );
-        stream = await navigator.mediaDevices.getUserMedia({ audio: {} });
+      let attempts = [
+        { audio: true }, // Standard approach
+        { audio: {} }, // Empty object
+        { audio: { echoCancellation: false } }, // Minimal constraint
+      ];
+
+      let lastError = null;
+      for (let i = 0; i < attempts.length; i++) {
+        try {
+          console.log(`Attempting getUserMedia with constraints:`, attempts[i]);
+          stream = await navigator.mediaDevices.getUserMedia(attempts[i]);
+          console.log("Success! Got media stream");
+          break;
+        } catch (err) {
+          console.error(`Attempt ${i + 1} failed:`, err.name, err.message);
+          lastError = err;
+          if (i === attempts.length - 1) {
+            // All attempts failed, throw the last error
+            throw lastError;
+          }
+        }
+      }
+
+      if (!stream) {
+        throw new Error("Failed to get media stream after all attempts");
       }
 
       // Initialize AudioContext if not already done
@@ -151,14 +168,27 @@ class ANCDemoApp {
       }
 
       this.audioChunks = [];
-      this.mediaRecorder = new MediaRecorder(stream);
+
+      // Safari/WebKit needs specific MIME type options
+      let options = {};
+      if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        options = { mimeType: "audio/mp4" };
+      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+        options = { mimeType: "audio/webm;codecs=opus" };
+      } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+        options = { mimeType: "audio/webm" };
+      }
+
+      console.log("Using MediaRecorder with options:", options);
+      this.mediaRecorder = new MediaRecorder(stream, options);
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
       };
 
       this.mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(this.audioChunks, { type: "audio/webm" });
+        const mimeType = this.mediaRecorder.mimeType || "audio/webm";
+        const audioBlob = new Blob(this.audioChunks, { type: mimeType });
         const arrayBuffer = await audioBlob.arrayBuffer();
         this.recordedAudioBuffer = await this.audioContext.decodeAudioData(
           arrayBuffer
